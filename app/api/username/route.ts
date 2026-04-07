@@ -10,7 +10,7 @@ const BodySchema = z.object({
 
 export async function POST(req: Request) {
   const participantId = await getOrCreateParticipantId();
-  ensureParticipant(participantId);
+  await ensureParticipant(participantId);
 
   const json = await req.json().catch(() => null);
   const parsed = BodySchema.safeParse(json);
@@ -18,7 +18,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Invalid body" }, { status: 400 });
   }
 
-  setParticipantUsername(participantId, parsed.data.username);
+  await setParticipantUsername(participantId, parsed.data.username);
   return NextResponse.json({ ok: true });
 }
 

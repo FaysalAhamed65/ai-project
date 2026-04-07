@@ -26,7 +26,7 @@ type PageProps = {
 export default async function AdminDashboard({ searchParams }: PageProps) {
   if (!(await isAdminAuthed())) redirect("/admin/login");
 
-  const stats = computeAdminStats();
+  const stats = await computeAdminStats();
   const celebIds = Array.from(new Set(stats.images.map((i) => i.celebId))).sort();
   const selectedCelebId = typeof searchParams?.celebId === "string" ? searchParams.celebId : "all";
   const filteredImages =

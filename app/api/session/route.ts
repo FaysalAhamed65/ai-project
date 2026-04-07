@@ -11,12 +11,12 @@ export const runtime = "nodejs";
 
 export async function GET() {
   const participantId = await getOrCreateParticipantId();
-  const participant = ensureParticipant(participantId);
+  const participant = await ensureParticipant(participantId);
 
   const images = allImages();
   const imagesById = new Map(images.map((i) => [i.id, i]));
   const order = JSON.parse(participant.image_order_json) as string[];
-  const ratings = getRatingsMap(participantId);
+  const ratings = await getRatingsMap(participantId);
 
   const startIndex = firstUnratedIndex(order, ratings);
   const pageStart = Math.min(startIndex, order.length);

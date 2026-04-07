@@ -12,7 +12,7 @@ const BodySchema = z.object({
 
 export async function POST(req: Request) {
   const participantId = await getOrCreateParticipantId();
-  ensureParticipant(participantId);
+  await ensureParticipant(participantId);
 
   const json = await req.json().catch(() => null);
   const parsed = BodySchema.safeParse(json);
@@ -22,23 +22,26 @@ export async function POST(req: Request) {
 
   const { imageId, rating } = parsed.data;
   const now = Date.now();
-  const d = db();
+  const d = await db();
 
-  d.prepare(
-    `
+  await d.execute({
+    sql: `
       INSERT INTO ratings (participant_id, image_id, rating, created_at, updated_at)
       VALUES (?, ?, ?, ?, ?)
       ON CONFLICT(participant_id, image_id)
       DO UPDATE SET rating = excluded.rating, updated_at = excluded.updated_at
-    `
-  ).run(participantId, imageId, rating, now, now);
+    `,
+    args: [participantId, imageId, rating, now, now],
+  });
 
-  const participant = d
-    .prepare("SELECT image_order_json FROM participants WHERE id = ?")
-    .get(participantId) as { image_order_json: string } | undefined;
+  const participantRes = await d.execute({
+    sql: "SELECT image_order_json FROM participants WHERE id = ?",
+    args: [participantId],
+  });
+  const participant = (participantRes.rows[0] as unknown as { image_order_json: string } | undefined) ?? undefined;
 
   const order = participant ? (JSON.parse(participant.image_order_json) as string[]) : [];
-  const ratingsMap = getRatingsMap(participantId);
+  const ratingsMap = await getRatingsMap(participantId);
 
   const isFinished = order.length > 0 && Object.keys(ratingsMap).length >= order.length;
   // Email sending is intentionally disabled by default.

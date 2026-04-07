@@ -37,17 +37,21 @@ function transporter() {
 export async function maybeSendCompletionEmail({ participantId }: CompletionArgs) {
   if (!canSendEmail()) return { sent: false, reason: "missing_env" as const };
 
-  const d = db();
-  const already = d
-    .prepare("SELECT participant_id FROM completion_emails WHERE participant_id = ?")
-    .get(participantId) as { participant_id: string } | undefined;
+  const d = await db();
+  const alreadyRes = await d.execute({
+    sql: "SELECT participant_id FROM completion_emails WHERE participant_id = ?",
+    args: [participantId],
+  });
+  const already = (alreadyRes.rows[0] as unknown as { participant_id: string } | undefined) ?? undefined;
   if (already) return { sent: false, reason: "already_sent" as const };
 
   const images = allImages();
   const imgById = new Map(images.map((i) => [i.id, i]));
-  const ratings = d
-    .prepare("SELECT image_id, rating FROM ratings WHERE participant_id = ? ORDER BY image_id")
-    .all(participantId) as { image_id: string; rating: number }[];
+  const ratingsRes = await d.execute({
+    sql: "SELECT image_id, rating FROM ratings WHERE participant_id = ? ORDER BY image_id",
+    args: [participantId],
+  });
+  const ratings = ratingsRes.rows as unknown as { image_id: string; rating: number }[];
 
   const lines = ratings.map((r) => {
     const img = imgById.get(r.image_id);
@@ -69,10 +73,10 @@ export async function maybeSendCompletionEmail({ participantId }: CompletionArgs
 
   await transporter().sendMail({ from, to, subject, text });
 
-  d.prepare("INSERT INTO completion_emails (participant_id, sent_at) VALUES (?, ?)").run(
-    participantId,
-    Date.now()
-  );
+  await d.execute({
+    sql: "INSERT INTO completion_emails (participant_id, sent_at) VALUES (?, ?)",
+    args: [participantId, Date.now()],
+  });
 
   return { sent: true as const };
 }

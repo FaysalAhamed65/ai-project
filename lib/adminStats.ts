@@ -13,34 +13,39 @@ export type ImageStats = {
   buckets: RatingBucket[];
 };
 
-export function computeAdminStats() {
-  const d = db();
+export async function computeAdminStats() {
+  const d = await db();
   const images = allImages();
 
-  const totalParticipants = (d.prepare("SELECT COUNT(*) as c FROM participants").get() as { c: number }).c;
-  const totalRatings = (d.prepare("SELECT COUNT(*) as c FROM ratings").get() as { c: number }).c;
-  const completedParticipants = (
-    d.prepare("SELECT COUNT(*) as c FROM completion_emails").get() as { c: number }
-  ).c;
+  const totalParticipantsRes = await d.execute("SELECT COUNT(*) as c FROM participants");
+  const totalRatingsRes = await d.execute("SELECT COUNT(*) as c FROM ratings");
+  const completedParticipantsRes = await d.execute("SELECT COUNT(*) as c FROM completion_emails");
 
-  const participants = d
-    .prepare("SELECT id, username, created_at, last_seen_at FROM participants ORDER BY created_at DESC")
-    .all() as { id: string; username: string | null; created_at: number; last_seen_at: number }[];
+  const totalParticipants = Number((totalParticipantsRes.rows[0] as any)?.c ?? 0);
+  const totalRatings = Number((totalRatingsRes.rows[0] as any)?.c ?? 0);
+  const completedParticipants = Number((completedParticipantsRes.rows[0] as any)?.c ?? 0);
 
-  const rows = d
-    .prepare(
-      `
-        SELECT image_id, rating, COUNT(*) as c
-        FROM ratings
-        GROUP BY image_id, rating
-      `
-    )
-    .all() as { image_id: string; rating: number; c: number }[];
+  const participantsRes = await d.execute(
+    "SELECT id, username, created_at, last_seen_at FROM participants ORDER BY created_at DESC"
+  );
+  const participants = participantsRes.rows as unknown as {
+    id: string;
+    username: string | null;
+    created_at: number;
+    last_seen_at: number;
+  }[];
+
+  const rowsRes = await d.execute(`
+    SELECT image_id, rating, COUNT(*) as c
+    FROM ratings
+    GROUP BY image_id, rating
+  `);
+  const rows = rowsRes.rows as unknown as { image_id: string; rating: number; c: number }[];
 
   const byImage = new Map<string, Map<number, number>>();
   for (const r of rows) {
     const m = byImage.get(r.image_id) ?? new Map<number, number>();
-    m.set(r.rating, r.c);
+    m.set(Number(r.rating), Number(r.c));
     byImage.set(r.image_id, m);
   }
 

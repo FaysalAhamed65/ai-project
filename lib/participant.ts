@@ -32,21 +32,21 @@ export async function getOrCreateParticipantId(): Promise<string> {
   return id;
 }
 
-export function ensureParticipant(participantId: string): ParticipantRow {
+export async function ensureParticipant(participantId: string): Promise<ParticipantRow> {
   const now = Date.now();
-  const d = db();
+  const d = await db();
 
-  const select = d
-    .prepare(
-      "SELECT id, username, created_at, last_seen_at, image_order_json FROM participants WHERE id = ?"
-    )
-    .get(participantId) as ParticipantRow | undefined;
+  const selectRes = await d.execute({
+    sql: "SELECT id, username, created_at, last_seen_at, image_order_json FROM participants WHERE id = ?",
+    args: [participantId],
+  });
+  const select = (selectRes.rows[0] as unknown as ParticipantRow | undefined) ?? undefined;
 
   if (select) {
-    d.prepare("UPDATE participants SET last_seen_at = ? WHERE id = ?").run(
-      now,
-      participantId
-    );
+    await d.execute({
+      sql: "UPDATE participants SET last_seen_at = ? WHERE id = ?",
+      args: [now, participantId],
+    });
     return { ...select, last_seen_at: now };
   }
 
@@ -60,26 +60,31 @@ export function ensureParticipant(participantId: string): ParticipantRow {
     image_order_json: JSON.stringify(order),
   };
 
-  d.prepare(
-    "INSERT INTO participants (id, username, created_at, last_seen_at, image_order_json) VALUES (?, ?, ?, ?, ?)"
-  ).run(row.id, row.username, row.created_at, row.last_seen_at, row.image_order_json);
+  await d.execute({
+    sql: "INSERT INTO participants (id, username, created_at, last_seen_at, image_order_json) VALUES (?, ?, ?, ?, ?)",
+    args: [row.id, row.username, row.created_at, row.last_seen_at, row.image_order_json],
+  });
 
   return row;
 }
 
-export function setParticipantUsername(participantId: string, username: string) {
-  const d = db();
-  d.prepare("UPDATE participants SET username = ? WHERE id = ?").run(username, participantId);
+export async function setParticipantUsername(participantId: string, username: string) {
+  const d = await db();
+  await d.execute({
+    sql: "UPDATE participants SET username = ? WHERE id = ?",
+    args: [username, participantId],
+  });
 }
 
-export function getRatingsMap(participantId: string): Record<string, number> {
-  const d = db();
-  const rows = d
-    .prepare("SELECT image_id, rating FROM ratings WHERE participant_id = ?")
-    .all(participantId) as { image_id: string; rating: number }[];
+export async function getRatingsMap(participantId: string): Promise<Record<string, number>> {
+  const d = await db();
+  const res = await d.execute({
+    sql: "SELECT image_id, rating FROM ratings WHERE participant_id = ?",
+    args: [participantId],
+  });
 
   const map: Record<string, number> = {};
-  for (const r of rows) map[r.image_id] = r.rating;
+  for (const r of res.rows as unknown as { image_id: string; rating: number }[]) map[r.image_id] = r.rating;
   return map;
 }
 
