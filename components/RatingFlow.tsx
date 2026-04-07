@@ -159,13 +159,13 @@ export function RatingFlow() {
                 savingId === session.images[0].id ? "opacity-75" : "opacity-100"
               )}
             >
-              <div className="relative aspect-[4/5] w-full bg-zinc-100 dark:bg-zinc-900">
+              <div className="relative h-[70vh] w-full bg-zinc-100 dark:bg-zinc-900 sm:h-[75vh]">
                 <Image
                   src={session.images[0].src}
                   alt={session.images[0].label}
                   fill
                   sizes="(max-width: 1024px) 100vw, 640px"
-                  className="object-cover"
+                  className="object-contain"
                   priority={false}
                 />
               </div>
