@@ -52,6 +52,7 @@ export function RatingFlow() {
   const [savingId, setSavingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [cursor, setCursor] = useState<number | null>(null);
+  const [imageAspectById, setImageAspectById] = useState<Record<string, number>>({});
 
   async function refresh() {
     setLoading(true);
@@ -249,7 +250,13 @@ export function RatingFlow() {
                 savingId === session.images[0].id ? "opacity-75" : "opacity-100"
               )}
             >
-              <div className="relative h-[70vh] w-full bg-zinc-100 dark:bg-zinc-900 sm:h-[75vh]">
+              <div className="flex justify-center bg-zinc-100 dark:bg-zinc-900">
+                <div
+                  className="relative h-[70vh] max-w-full sm:h-[75vh]"
+                  style={{
+                    aspectRatio: String(imageAspectById[session.images[0].id] ?? 3 / 5),
+                  }}
+                >
                 <Image
                   src={session.images[0].src}
                   alt={session.images[0].label}
@@ -257,7 +264,18 @@ export function RatingFlow() {
                   sizes="(max-width: 1024px) 100vw, 640px"
                   className="object-contain"
                   priority={false}
+                  onLoad={(e) => {
+                    const img = e.currentTarget as HTMLImageElement;
+                    const { naturalWidth, naturalHeight } = img;
+                    if (!naturalWidth || !naturalHeight) return;
+                    const ratio = naturalWidth / naturalHeight;
+                    setImageAspectById((prev) => {
+                      if (prev[session.images[0]!.id] === ratio) return prev;
+                      return { ...prev, [session.images[0]!.id]: ratio };
+                    });
+                  }}
                 />
+              </div>
               </div>
               <div className="p-4">
                 <div className="flex items-start justify-between gap-3">
