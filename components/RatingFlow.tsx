@@ -52,7 +52,6 @@ export function RatingFlow() {
   const [savingId, setSavingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [cursor, setCursor] = useState<number | null>(null);
-  const [imageAspectById, setImageAspectById] = useState<Record<string, number>>({});
 
   async function refresh() {
     setLoading(true);
@@ -254,7 +253,7 @@ export function RatingFlow() {
                 <div
                   className="relative h-[70vh] max-w-[calc(100vw-2rem)] sm:h-[75vh]"
                   style={{
-                    aspectRatio: String(imageAspectById[session.images[0].id] ?? 3 / 5),
+                    aspectRatio: "1200 / 2000",
                   }}
                 >
                 <Image
@@ -262,18 +261,8 @@ export function RatingFlow() {
                   alt={session.images[0].label}
                   fill
                   sizes="(max-width: 1024px) 100vw, 640px"
-                  className="object-contain"
+                  className="object-cover"
                   priority={false}
-                  onLoad={(e) => {
-                    const img = e.currentTarget as HTMLImageElement;
-                    const { naturalWidth, naturalHeight } = img;
-                    if (!naturalWidth || !naturalHeight) return;
-                    const ratio = naturalWidth / naturalHeight;
-                    setImageAspectById((prev) => {
-                      if (prev[session.images[0]!.id] === ratio) return prev;
-                      return { ...prev, [session.images[0]!.id]: ratio };
-                    });
-                  }}
                 />
               </div>
               </div>
