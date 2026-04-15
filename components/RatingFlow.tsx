@@ -52,25 +52,7 @@ export function RatingFlow() {
   const [savingId, setSavingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [cursor, setCursor] = useState<number | null>(null);
-  const [imageAspectById, setImageAspectById] = useState<Record<string, "3 / 5" | "1 / 1" | "100 / 167">>({});
-
-  function pickFrameRatio(rawRatio: number): "3 / 5" | "1 / 1" | "100 / 167" {
-    const options = [
-      { key: "3 / 5" as const, value: 3 / 5 },
-      { key: "1 / 1" as const, value: 1 / 1 },
-      { key: "100 / 167" as const, value: 100 / 167 },
-    ];
-    let best = options[0]!;
-    let minDiff = Math.abs(rawRatio - best.value);
-    for (const option of options.slice(1)) {
-      const diff = Math.abs(rawRatio - option.value);
-      if (diff < minDiff) {
-        minDiff = diff;
-        best = option;
-      }
-    }
-    return best.key;
-  }
+  const [imageAspectById, setImageAspectById] = useState<Record<string, number>>({});
 
   async function refresh() {
     setLoading(true);
@@ -272,7 +254,7 @@ export function RatingFlow() {
                 <div
                   className="relative h-[70vh] max-w-[calc(100vw-2rem)] sm:h-[75vh]"
                   style={{
-                    aspectRatio: imageAspectById[session.images[0].id] ?? "3 / 5",
+                    aspectRatio: String(imageAspectById[session.images[0].id] ?? 3 / 5),
                   }}
                 >
                 <Image
@@ -287,10 +269,9 @@ export function RatingFlow() {
                     const { naturalWidth, naturalHeight } = img;
                     if (!naturalWidth || !naturalHeight) return;
                     const ratio = naturalWidth / naturalHeight;
-                    const frameRatio = pickFrameRatio(ratio);
                     setImageAspectById((prev) => {
-                      if (prev[session.images[0]!.id] === frameRatio) return prev;
-                      return { ...prev, [session.images[0]!.id]: frameRatio };
+                      if (prev[session.images[0]!.id] === ratio) return prev;
+                      return { ...prev, [session.images[0]!.id]: ratio };
                     });
                   }}
                 />
