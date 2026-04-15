@@ -246,13 +246,13 @@ export function RatingFlow() {
             <div
               key={session.images[0].id}
               className={cn(
-                "mx-auto w-full max-w-xl overflow-hidden rounded-2xl border border-black/10 bg-white shadow-sm dark:border-white/10 dark:bg-zinc-950",
+                "mx-auto w-fit max-w-full overflow-hidden rounded-2xl border border-black/10 bg-white shadow-sm dark:border-white/10 dark:bg-zinc-950",
                 savingId === session.images[0].id ? "opacity-75" : "opacity-100"
               )}
             >
-              <div className="flex justify-center bg-zinc-100 dark:bg-zinc-900">
+              <div className="bg-zinc-100 dark:bg-zinc-900">
                 <div
-                  className="relative h-[70vh] max-w-full sm:h-[75vh]"
+                  className="relative h-[70vh] max-w-[calc(100vw-2rem)] sm:h-[75vh]"
                   style={{
                     aspectRatio: String(imageAspectById[session.images[0].id] ?? 3 / 5),
                   }}
