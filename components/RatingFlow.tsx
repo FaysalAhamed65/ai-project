@@ -24,8 +24,9 @@ type SessionPayload = {
   isFinished: boolean;
 };
 
-async function getSession(): Promise<SessionPayload> {
-  const res = await fetch("/api/session", { cache: "no-store" });
+async function getSession(cursor: number | null): Promise<SessionPayload> {
+  const qs = cursor === null ? "" : `?cursor=${cursor}`;
+  const res = await fetch(`/api/session${qs}`, { cache: "no-store" });
   if (!res.ok) throw new Error("Failed to load session");
   return res.json();
 }
@@ -45,13 +46,16 @@ export function RatingFlow() {
   const [loading, setLoading] = useState(true);
   const [savingId, setSavingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [cursor, setCursor] = useState<number | null>(null);
 
   async function refresh() {
     setLoading(true);
     setError(null);
     try {
-      const s = await getSession();
+      const s = await getSession(cursor);
       setSession(s);
+      // Sync cursor with server-selected index on first load.
+      if (cursor === null) setCursor(s.pageStart);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Something went wrong");
     } finally {
@@ -69,8 +73,11 @@ export function RatingFlow() {
     setError(null);
     try {
       await submitRating(imageId, rating);
-      // Move immediately to the next photo (session API returns the next unrated item).
-      await refresh();
+      // Move to next index, but allow going back with Previous.
+      const next = Math.min((cursor ?? session.pageStart) + 1, Math.max(0, session.total));
+      setCursor(next);
+      const s = await getSession(next);
+      setSession(s);
       window.scrollTo({ top: 0, behavior: "smooth" });
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to save rating");
@@ -96,6 +103,9 @@ export function RatingFlow() {
   }
 
   const percent = Math.round((session.completed / Math.max(1, session.total)) * 100);
+  const currentIndex = cursor ?? session.pageStart;
+  const canPrev = currentIndex > 0;
+  const canNext = currentIndex + 1 < session.total;
 
   return (
     <div className="w-full">
@@ -119,6 +129,60 @@ export function RatingFlow() {
           >
             Admin
           </Link>
+          <button
+            type="button"
+            disabled={!canPrev || savingId !== null}
+            onClick={async () => {
+              const prev = Math.max(0, currentIndex - 1);
+              setCursor(prev);
+              setLoading(true);
+              setError(null);
+              try {
+                const s = await getSession(prev);
+                setSession(s);
+                window.scrollTo({ top: 0, behavior: "smooth" });
+              } catch (e) {
+                setError(e instanceof Error ? e.message : "Failed to load");
+              } finally {
+                setLoading(false);
+              }
+            }}
+            className={cn(
+              "rounded-full px-4 py-2 text-sm font-medium shadow-sm transition",
+              canPrev && savingId === null
+                ? "border border-black/10 bg-white text-zinc-900 hover:bg-zinc-50 dark:border-white/10 dark:bg-zinc-950 dark:text-white dark:hover:bg-zinc-900"
+                : "cursor-not-allowed bg-zinc-200 text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400"
+            )}
+          >
+            Previous
+          </button>
+          <button
+            type="button"
+            disabled={!canNext || savingId !== null}
+            onClick={async () => {
+              const next = Math.min(currentIndex + 1, Math.max(0, session.total));
+              setCursor(next);
+              setLoading(true);
+              setError(null);
+              try {
+                const s = await getSession(next);
+                setSession(s);
+                window.scrollTo({ top: 0, behavior: "smooth" });
+              } catch (e) {
+                setError(e instanceof Error ? e.message : "Failed to load");
+              } finally {
+                setLoading(false);
+              }
+            }}
+            className={cn(
+              "rounded-full px-4 py-2 text-sm font-medium shadow-sm transition",
+              canNext && savingId === null
+                ? "bg-zinc-900 text-white hover:bg-zinc-800 dark:bg-white dark:text-black dark:hover:bg-zinc-100"
+                : "cursor-not-allowed bg-zinc-200 text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400"
+            )}
+          >
+            Next
+          </button>
           <button
             type="button"
             onClick={() => void refresh()}
