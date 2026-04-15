@@ -41,6 +41,11 @@ async function submitRating(imageId: string, rating: number) {
   return res.json() as Promise<{ ok: true; isFinished: boolean }>;
 }
 
+async function resetParticipant() {
+  const res = await fetch("/api/reset", { method: "POST" });
+  if (!res.ok) throw new Error("Failed to reset");
+}
+
 export function RatingFlow() {
   const [session, setSession] = useState<SessionPayload | null>(null);
   const [loading, setLoading] = useState(true);
@@ -199,13 +204,34 @@ export function RatingFlow() {
           <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-300">
             Your ratings are saved. You can close this tab.
           </p>
-          <button
-            type="button"
-            onClick={() => void refresh()}
-            className="mt-6 inline-flex rounded-full bg-gradient-to-r from-indigo-500 to-fuchsia-500 px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:opacity-95"
-          >
-            View summary
-          </button>
+          <div className="mt-6 flex flex-col items-center justify-center gap-2 sm:flex-row">
+            <button
+              type="button"
+              onClick={() => void refresh()}
+              className="inline-flex rounded-full bg-gradient-to-r from-indigo-500 to-fuchsia-500 px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:opacity-95"
+            >
+              View summary
+            </button>
+            <button
+              type="button"
+              onClick={async () => {
+                setLoading(true);
+                setError(null);
+                try {
+                  await resetParticipant();
+                  window.localStorage.removeItem("rating_username");
+                  window.location.reload();
+                } catch (e) {
+                  setError(e instanceof Error ? e.message : "Failed to reset");
+                } finally {
+                  setLoading(false);
+                }
+              }}
+              className="inline-flex rounded-full border border-black/10 bg-white px-5 py-2.5 text-sm font-semibold text-zinc-900 shadow-sm hover:bg-zinc-50 dark:border-white/10 dark:bg-zinc-950 dark:text-white dark:hover:bg-zinc-900"
+            >
+              Start again (new user)
+            </button>
+          </div>
         </div>
       ) : (
         <>

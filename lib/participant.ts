@@ -96,3 +96,8 @@ export function firstUnratedIndex(order: string[], ratings: Record<string, numbe
   return order.length;
 }
 
+export async function clearParticipantCookie() {
+  const jar = await cookies();
+  jar.set(PARTICIPANT_COOKIE, "", { path: "/", maxAge: 0 });
+}
+
