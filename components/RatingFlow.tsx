@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { Stars } from "@/components/Stars";
 import { cn } from "@/lib/ui";
 
@@ -23,6 +23,28 @@ type SessionPayload = {
   images: SessionImage[];
   isFinished: boolean;
 };
+
+type AspectPreset = "3 / 5" | "1 / 1" | "100 / 167";
+
+function pickAspectPreset(width: number, height: number): AspectPreset {
+  const ratio = width / height;
+  const presets: Array<{ key: AspectPreset; value: number }> = [
+    { key: "3 / 5", value: 3 / 5 },
+    { key: "1 / 1", value: 1 / 1 },
+    { key: "100 / 167", value: 100 / 167 },
+  ];
+
+  let best = presets[0]!;
+  let bestDiff = Math.abs(ratio - best.value);
+  for (const p of presets) {
+    const diff = Math.abs(ratio - p.value);
+    if (diff < bestDiff) {
+      best = p;
+      bestDiff = diff;
+    }
+  }
+  return best.key;
+}
 
 async function getSession(cursor: number | null): Promise<SessionPayload> {
   const qs = cursor === null ? "" : `?cursor=${cursor}`;
@@ -52,6 +74,7 @@ export function RatingFlow() {
   const [savingId, setSavingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [cursor, setCursor] = useState<number | null>(null);
+  const [imageAspectById, setImageAspectById] = useState<Record<string, AspectPreset>>({});
 
   async function refresh() {
     setLoading(true);
@@ -253,7 +276,7 @@ export function RatingFlow() {
                 <div
                   className="relative h-[70vh] max-w-[calc(100vw-2rem)] sm:h-[75vh]"
                   style={{
-                    aspectRatio: "1200 / 2000",
+                    aspectRatio: imageAspectById[session.images[0].id] ?? "3 / 5",
                   }}
                 >
                 <Image
@@ -261,8 +284,18 @@ export function RatingFlow() {
                   alt={session.images[0].label}
                   fill
                   sizes="(max-width: 1024px) 100vw, 640px"
-                  className="object-cover"
+                  className="object-contain"
                   priority={false}
+                  onLoad={(e) => {
+                    const img = e.currentTarget as HTMLImageElement;
+                    const { naturalWidth, naturalHeight } = img;
+                    if (!naturalWidth || !naturalHeight) return;
+                    const aspectPreset = pickAspectPreset(naturalWidth, naturalHeight);
+                    setImageAspectById((prev) => {
+                      if (prev[session.images[0]!.id] === aspectPreset) return prev;
+                      return { ...prev, [session.images[0]!.id]: aspectPreset };
+                    });
+                  }}
                 />
               </div>
               </div>
