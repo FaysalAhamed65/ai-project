@@ -142,8 +142,9 @@ export function RatingFlow() {
 
   const percent = Math.round((session.completed / Math.max(1, session.total)) * 100);
   const currentIndex = cursor ?? session.pageStart;
+  const currentImage = session.images[0] ?? null;
   const canPrev = currentIndex > 0;
-  const canNext = currentIndex + 1 < session.total;
+  const canNext = currentIndex + 1 < session.total && (currentImage?.rating ?? null) !== null;
 
   return (
     <div className="w-full">
@@ -199,6 +200,7 @@ export function RatingFlow() {
             type="button"
             disabled={!canNext || savingId !== null}
             onClick={async () => {
+              if (!canNext) return;
               const next = Math.min(currentIndex + 1, Math.max(0, session.total));
               setCursor(next);
               setLoading(true);
