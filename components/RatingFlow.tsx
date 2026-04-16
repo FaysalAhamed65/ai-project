@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Stars } from "@/components/Stars";
 import { cn } from "@/lib/ui";
 
@@ -59,8 +59,17 @@ async function submitRating(imageId: string, rating: number) {
     headers: { "content-type": "application/json" },
     body: JSON.stringify({ imageId, rating }),
   });
-  if (!res.ok) throw new Error("Failed to save rating");
-  return res.json() as Promise<{ ok: true; isFinished: boolean }>;
+  const payload = (await res.json().catch(() => null)) as unknown;
+  if (!res.ok) {
+    let msg = "Failed to save rating";
+    if (payload && typeof payload === "object") {
+      const obj = payload as Record<string, unknown>;
+      const maybeError = obj.error;
+      if (typeof maybeError === "string" && maybeError.trim().length > 0) msg = maybeError;
+    }
+    throw new Error(msg);
+  }
+  return payload as Promise<{ ok: true; isFinished: boolean }>;
 }
 
 async function resetParticipant() {
@@ -76,7 +85,7 @@ export function RatingFlow() {
   const [cursor, setCursor] = useState<number | null>(null);
   const [imageAspectById, setImageAspectById] = useState<Record<string, AspectPreset>>({});
 
-  async function refresh() {
+  const refresh = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
@@ -89,11 +98,11 @@ export function RatingFlow() {
     } finally {
       setLoading(false);
     }
-  }
+  }, [cursor]);
 
   useEffect(() => {
     void refresh();
-  }, []);
+  }, [refresh]);
 
   async function onRate(imageId: string, rating: number) {
     if (!session) return;
@@ -106,6 +115,7 @@ export function RatingFlow() {
       setCursor(next);
       const s = await getSession(next);
       setSession(s);
+      setCursor(s.pageStart);
       window.scrollTo({ top: 0, behavior: "smooth" });
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to save rating");
@@ -168,6 +178,7 @@ export function RatingFlow() {
               try {
                 const s = await getSession(prev);
                 setSession(s);
+                setCursor(s.pageStart);
                 window.scrollTo({ top: 0, behavior: "smooth" });
               } catch (e) {
                 setError(e instanceof Error ? e.message : "Failed to load");
@@ -195,6 +206,7 @@ export function RatingFlow() {
               try {
                 const s = await getSession(next);
                 setSession(s);
+                setCursor(s.pageStart);
                 window.scrollTo({ top: 0, behavior: "smooth" });
               } catch (e) {
                 setError(e instanceof Error ? e.message : "Failed to load");

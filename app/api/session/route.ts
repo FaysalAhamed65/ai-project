@@ -5,6 +5,7 @@ import {
   firstUnratedIndex,
   getOrCreateParticipantId,
   getRatingsMap,
+  getLastVotedImageIds,
 } from "@/lib/participant";
 
 export const runtime = "nodejs";
@@ -33,7 +34,31 @@ export async function GET(req: Request) {
 
   const completed = Object.keys(ratings).length;
   const cursor = parseCursor(req.url);
-  const startIndex = cursor ?? firstUnratedIndex(order, ratings);
+  const firstUnrated = firstUnratedIndex(order, ratings);
+  let startIndex = cursor ?? firstUnrated;
+
+  // Enforce: a user can see only the last 5 voted photos when navigating backwards.
+  if (cursor !== null) {
+    const requestedId = order[cursor];
+    const requestedRating = requestedId ? ratings[requestedId] : undefined;
+
+    // If the requested cursor points to a rated photo, require it to be within the last 5 votes.
+    if (requestedId && typeof requestedRating === "number") {
+      const last5 = await getLastVotedImageIds(participantId, 5);
+      const last5Set = new Set(last5);
+
+      if (!last5Set.has(requestedId)) {
+        const allowedIndices = last5
+          .map((id) => order.indexOf(id))
+          .filter((i) => Number.isFinite(i) && i >= 0)
+          .sort((a, b) => a - b);
+
+        const nearestLeq = allowedIndices.filter((i) => i <= cursor).sort((a, b) => b - a)[0];
+        startIndex = nearestLeq ?? allowedIndices[0]!;
+      }
+    }
+  }
+
   const pageStart = Math.min(startIndex, order.length);
   const pageSize = 1;
   const pageEnd = Math.min(pageStart + pageSize, order.length);

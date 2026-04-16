@@ -45,6 +45,15 @@ async function ensureSchema(c: Client) {
   `);
 
   await c.execute(`
+    CREATE TABLE IF NOT EXISTS revote_history (
+      participant_id TEXT NOT NULL,
+      image_id TEXT NOT NULL,
+      created_at INTEGER NOT NULL,
+      PRIMARY KEY (participant_id, image_id)
+    )
+  `);
+
+  await c.execute(`
     CREATE TABLE IF NOT EXISTS admin_sessions (
       token TEXT PRIMARY KEY,
       created_at INTEGER NOT NULL

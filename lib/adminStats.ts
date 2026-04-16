@@ -21,9 +21,13 @@ export async function computeAdminStats() {
   const totalRatingsRes = await d.execute("SELECT COUNT(*) as c FROM ratings");
   const completedParticipantsRes = await d.execute("SELECT COUNT(*) as c FROM completion_emails");
 
-  const totalParticipants = Number((totalParticipantsRes.rows[0] as any)?.c ?? 0);
-  const totalRatings = Number((totalRatingsRes.rows[0] as any)?.c ?? 0);
-  const completedParticipants = Number((completedParticipantsRes.rows[0] as any)?.c ?? 0);
+  const totalParticipantsRow = totalParticipantsRes.rows[0] as unknown as { c?: number } | undefined;
+  const totalRatingsRow = totalRatingsRes.rows[0] as unknown as { c?: number } | undefined;
+  const completedParticipantsRow = completedParticipantsRes.rows[0] as unknown as { c?: number } | undefined;
+
+  const totalParticipants = Number(totalParticipantsRow?.c ?? 0);
+  const totalRatings = Number(totalRatingsRow?.c ?? 0);
+  const completedParticipants = Number(completedParticipantsRow?.c ?? 0);
 
   const participantsRes = await d.execute(
     "SELECT id, username, created_at, last_seen_at FROM participants ORDER BY created_at DESC"

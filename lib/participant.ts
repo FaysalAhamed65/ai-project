@@ -88,6 +88,16 @@ export async function getRatingsMap(participantId: string): Promise<Record<strin
   return map;
 }
 
+export async function getLastVotedImageIds(participantId: string, limit: number): Promise<string[]> {
+  const d = await db();
+  const res = await d.execute({
+    sql: "SELECT image_id FROM ratings WHERE participant_id = ? ORDER BY updated_at DESC LIMIT ?",
+    args: [participantId, limit],
+  });
+
+  return (res.rows as unknown as { image_id: string }[]).map((r) => r.image_id);
+}
+
 export function firstUnratedIndex(order: string[], ratings: Record<string, number>) {
   for (let i = 0; i < order.length; i++) {
     const id = order[i]!;

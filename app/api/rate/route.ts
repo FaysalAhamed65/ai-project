@@ -24,15 +24,81 @@ export async function POST(req: Request) {
   const now = Date.now();
   const d = await db();
 
-  await d.execute({
-    sql: `
-      INSERT INTO ratings (participant_id, image_id, rating, created_at, updated_at)
-      VALUES (?, ?, ?, ?, ?)
-      ON CONFLICT(participant_id, image_id)
-      DO UPDATE SET rating = excluded.rating, updated_at = excluded.updated_at
-    `,
-    args: [participantId, imageId, rating, now, now],
-  });
+  try {
+    await d.execute({ sql: "BEGIN IMMEDIATE" });
+
+    const existingRes = await d.execute({
+      sql: "SELECT created_at FROM ratings WHERE participant_id = ? AND image_id = ?",
+      args: [participantId, imageId],
+    });
+    const hasExisting = existingRes.rows.length > 0;
+
+    if (hasExisting) {
+      // A "re-vote" is any POST for an image that was already rated before.
+      const last5Res = await d.execute({
+        sql: "SELECT image_id FROM ratings WHERE participant_id = ? ORDER BY updated_at DESC LIMIT ?",
+        args: [participantId, 5],
+      });
+      const last5Set = new Set((last5Res.rows as unknown as { image_id: string }[]).map((r) => r.image_id));
+
+      if (!last5Set.has(imageId)) {
+        await d.execute({ sql: "ROLLBACK" });
+        return NextResponse.json(
+          { error: "Re-vote is allowed only for the last 5 voted photos." },
+          { status: 403 }
+        );
+      }
+
+      const alreadyRevotedRes = await d.execute({
+        sql: "SELECT 1 FROM revote_history WHERE participant_id = ? AND image_id = ?",
+        args: [participantId, imageId],
+      });
+      const alreadyRevoted = alreadyRevotedRes.rows.length > 0;
+
+      if (!alreadyRevoted) {
+        const countRes = await d.execute({
+          sql: "SELECT COUNT(*) AS cnt FROM revote_history WHERE participant_id = ?",
+          args: [participantId],
+        });
+        const countRow = countRes.rows[0] as unknown as { cnt?: number } | undefined;
+        const revoteCount = Number(countRow?.cnt ?? 0);
+        if (revoteCount >= 3) {
+          await d.execute({ sql: "ROLLBACK" });
+          return NextResponse.json(
+            { error: "You can re-vote at most 3 distinct photos in this 100-photo run." },
+            { status: 403 }
+          );
+        }
+
+        await d.execute({
+          sql: `
+            INSERT INTO revote_history (participant_id, image_id, created_at)
+            VALUES (?, ?, ?)
+            ON CONFLICT(participant_id, image_id) DO NOTHING
+          `,
+          args: [participantId, imageId, now],
+        });
+      }
+    }
+
+    await d.execute({
+      sql: `
+        INSERT INTO ratings (participant_id, image_id, rating, created_at, updated_at)
+        VALUES (?, ?, ?, ?, ?)
+        ON CONFLICT(participant_id, image_id)
+        DO UPDATE SET rating = excluded.rating, updated_at = excluded.updated_at
+      `,
+      args: [participantId, imageId, rating, now, now],
+    });
+
+    await d.execute({ sql: "COMMIT" });
+  } catch (e) {
+    await d.execute({ sql: "ROLLBACK" }).catch(() => undefined);
+    return NextResponse.json(
+      { error: e instanceof Error ? e.message : "Failed to save rating" },
+      { status: 500 }
+    );
+  }
 
   const participantRes = await d.execute({
     sql: "SELECT image_order_json FROM participants WHERE id = ?",
