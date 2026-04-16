@@ -25,8 +25,6 @@ export async function POST(req: Request) {
   const d = await db();
 
   try {
-    await d.execute({ sql: "BEGIN IMMEDIATE" });
-
     const existingRes = await d.execute({
       sql: "SELECT created_at FROM ratings WHERE participant_id = ? AND image_id = ?",
       args: [participantId, imageId],
@@ -42,7 +40,6 @@ export async function POST(req: Request) {
       const last5Set = new Set((last5Res.rows as unknown as { image_id: string }[]).map((r) => r.image_id));
 
       if (!last5Set.has(imageId)) {
-        await d.execute({ sql: "ROLLBACK" });
         return NextResponse.json(
           { error: "Re-vote is allowed only for the last 5 voted photos." },
           { status: 403 }
@@ -63,7 +60,6 @@ export async function POST(req: Request) {
         const countRow = countRes.rows[0] as unknown as { cnt?: number } | undefined;
         const revoteCount = Number(countRow?.cnt ?? 0);
         if (revoteCount >= 3) {
-          await d.execute({ sql: "ROLLBACK" });
           return NextResponse.json(
             { error: "You can re-vote at most 3 distinct photos in this 100-photo run." },
             { status: 403 }
@@ -90,10 +86,7 @@ export async function POST(req: Request) {
       `,
       args: [participantId, imageId, rating, now, now],
     });
-
-    await d.execute({ sql: "COMMIT" });
   } catch (e) {
-    await d.execute({ sql: "ROLLBACK" }).catch(() => undefined);
     return NextResponse.json(
       { error: e instanceof Error ? e.message : "Failed to save rating" },
       { status: 500 }
