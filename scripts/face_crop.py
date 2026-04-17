@@ -2,7 +2,7 @@ import os
 from pathlib import Path
 
 import cv2
-from PIL import Image
+from PIL import Image, ImageEnhance, ImageFilter
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -12,7 +12,7 @@ MODEL_PATH = ROOT / "models" / "face_detection_yunet_2023mar.onnx"
 
 # Output aspect ratio (width / height).
 # Use a square crop to reduce frame height and show mostly face.
-TARGET_ASPECT = 1 / 1
+TARGET_ASPECT = 3 / 5
 # Tighter head framing (hair -> throat, minimal shoulders/body).
 # These are multipliers of detected face-box height/width.
 FACE_WIDTH_PORTION = 0.88
@@ -21,6 +21,22 @@ BOTTOM_EXTRA_FACE_HEIGHT = 0.45
 
 def ensure_dir(p: Path) -> None:
     p.mkdir(parents=True, exist_ok=True)
+
+
+def enhance_image(img: Image.Image) -> Image.Image:
+    """Apply basic enhancements: sharpening, contrast, and color."""
+    # Sharpen the image using Unsharp Mask to make soft edges pop
+    img = img.filter(ImageFilter.UnsharpMask(radius=2, percent=150, threshold=3))
+    
+    # Enhance contrast slightly to bring out details
+    enhancer_contrast = ImageEnhance.Contrast(img)
+    img = enhancer_contrast.enhance(1.1)
+    
+    # Enhance color (saturation) slightly
+    enhancer_color = ImageEnhance.Color(img)
+    img = enhancer_color.enhance(1.05)
+    
+    return img
 
 
 def detect_main_face(detector, image_bgr):
@@ -152,10 +168,13 @@ def process_image(detector, src_path: Path, dst_path: Path) -> None:
         left, top, right, bottom = expand_and_fit_aspect(x, y, bw, bh, w, h)
         cropped = pil_img.crop((left, top, right, bottom))
 
+    # --- Apply Image Enhancement ---
+    cropped = enhance_image(cropped)
+
     ensure_dir(dst_path.parent)
-    # Save as high-quality JPEG – no AI enhancement, just a crop.
+    # Save as high-quality JPEG with enhancement
     cropped.save(dst_path, format="JPEG", quality=95, subsampling=0)
-    print(f"[OK] Cropped -> {dst_path.relative_to(ROOT)}")
+    print(f"[OK] Cropped and Enhanced -> {dst_path.relative_to(ROOT)}")
 
 
 def main() -> None:
@@ -173,6 +192,25 @@ def main() -> None:
         top_k=10,
     )
 
+    MANUAL_OVERRIDES = {
+        "celeb01/04.jpg", "celeb01/05.jpg",
+        "celeb02/04.jpg",
+        "celeb03/03.jpg", "celeb03/04.jpg",
+        "celeb05/02.jpg", "celeb05/04.jpg",
+        "celeb06/02.jpg",
+        "celeb07/02.jpg",
+        "celeb08/02.jpg",
+        "celeb10/05.jpg",
+        "celeb11/03.jpg", "celeb11/04.jpg",
+        "celeb12/01.jpg",
+        "celeb13/03.jpg", "celeb13/04.jpg", "celeb13/05.jpg",
+        "celeb15/03.jpg", "celeb15/04.jpg",
+        "celeb16/02.jpg",
+        "celeb17/04.jpg", "celeb17/05.jpg",
+        "celeb18/03.jpg", "celeb18/05.jpg",
+        "celeb19/02.jpg", "celeb19/03.jpg", "celeb19/04.jpg"
+    }
+
     for celeb_dir in sorted(SRC_DIR.iterdir()):
         if not celeb_dir.is_dir():
             continue
@@ -182,6 +220,13 @@ def main() -> None:
             rel = img_file.relative_to(SRC_DIR)
             # Always write as .jpg for consistency.
             dst = DST_DIR / rel.with_suffix(".jpg")
+            
+            # Check if this specific photo was manually edited
+            rel_str = rel.with_suffix(".jpg").as_posix()
+            if rel_str in MANUAL_OVERRIDES:
+                print(f"[SKIP] Explicitly skipping custom photo: {rel_str}")
+                continue
+                
             process_image(detector, img_file, dst)
 
 
