@@ -870,10 +870,10 @@
     "label": "People 29 - 05"
   },
   {
-    "id": "celeb30_05",
+    "id": "celeb30_01",
     "celebId": "celeb30",
-    "src": "/images_face/celeb30/05.jpg",
-    "label": "People 30 - 05"
+    "src": "/images_face/celeb30/01.jpg",
+    "label": "People 30 - 01"
   },
   {
     "id": "celeb30_02",
@@ -882,10 +882,22 @@
     "label": "People 30 - 02"
   },
   {
+    "id": "celeb30_03",
+    "celebId": "celeb30",
+    "src": "/images_face/celeb30/03.jpg",
+    "label": "People 30 - 03"
+  },
+  {
     "id": "celeb30_04",
     "celebId": "celeb30",
     "src": "/images_face/celeb30/04.jpg",
     "label": "People 30 - 04"
+  },
+  {
+    "id": "celeb30_05",
+    "celebId": "celeb30",
+    "src": "/images_face/celeb30/05.jpg",
+    "label": "People 30 - 05"
   },
   {
     "id": "celeb31_01",
@@ -900,10 +912,22 @@
     "label": "People 31 - 02"
   },
   {
+    "id": "celeb31_03",
+    "celebId": "celeb31",
+    "src": "/images_face/celeb31/03.jpg",
+    "label": "People 31 - 03"
+  },
+  {
     "id": "celeb31_04",
     "celebId": "celeb31",
     "src": "/images_face/celeb31/04.jpg",
     "label": "People 31 - 04"
+  },
+  {
+    "id": "celeb31_05",
+    "celebId": "celeb31",
+    "src": "/images_face/celeb31/05.jpg",
+    "label": "People 31 - 05"
   },
   {
     "id": "celeb32_01",
@@ -946,6 +970,24 @@
     "celebId": "celeb33",
     "src": "/images_face/celeb33/02.jpg",
     "label": "People 33 - 02"
+  },
+  {
+    "id": "celeb33_03",
+    "celebId": "celeb33",
+    "src": "/images_face/celeb33/03.jpg",
+    "label": "People 33 - 03"
+  },
+  {
+    "id": "celeb33_04",
+    "celebId": "celeb33",
+    "src": "/images_face/celeb33/04.jpg",
+    "label": "People 33 - 04"
+  },
+  {
+    "id": "celeb33_05",
+    "celebId": "celeb33",
+    "src": "/images_face/celeb33/05.jpg",
+    "label": "People 33 - 05"
   },
   {
     "id": "celeb34_01",
@@ -1158,6 +1200,18 @@
     "label": "People 40 - 05"
   },
   {
+    "id": "celeb41_01",
+    "celebId": "celeb41",
+    "src": "/images_face/celeb41/01.jpg",
+    "label": "People 41 - 01"
+  },
+  {
+    "id": "celeb41_02",
+    "celebId": "celeb41",
+    "src": "/images_face/celeb41/02.jpg",
+    "label": "People 41 - 02"
+  },
+  {
     "id": "celeb41_03",
     "celebId": "celeb41",
     "src": "/images_face/celeb41/03.jpg",
@@ -1168,6 +1222,12 @@
     "celebId": "celeb41",
     "src": "/images_face/celeb41/04.jpg",
     "label": "People 41 - 04"
+  },
+  {
+    "id": "celeb41_05",
+    "celebId": "celeb41",
+    "src": "/images_face/celeb41/05.jpg",
+    "label": "People 41 - 05"
   },
   {
     "id": "celeb42_01",

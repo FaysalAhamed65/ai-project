@@ -42,7 +42,7 @@ function main() {
 
   if (topLevelImages.length === 0) {
     console.log("No top-level images found in public/images/.");
-    console.log("Put your 100 files directly into public/images/ then rerun.");
+    console.log("Put your 250 files directly into public/images/ then rerun.");
     process.exit(0);
   }
 

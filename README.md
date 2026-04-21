@@ -9,13 +9,13 @@ npm run dev
 
 Open `http://localhost:3000`.
 
-## Add your 100 photos
+## Add your 250 photos
 
-Put your images under `public/images/` (recommended structure matches `data/images.json`):
+Put your images under `public/images_face/` (recommended structure matches `data/images.json`):
 
-- `public/images/celeb01/01.jpg` … `05.jpg`
+- `public/images_face/celeb01/01.jpg` … `05.jpg`
 - …
-- `public/images/celeb20/01.jpg` … `05.jpg`
+- `public/images_face/celeb50/01.jpg` … `05.jpg`
 
 If you use different filenames/paths, update `data/images.json` accordingly.
 
@@ -32,7 +32,7 @@ Copy `.env.example` to `.env.local` and fill:
 - `SMTP_FROM` (optional)
 - `ADMIN_EMAIL`
 
-When a participant completes all 100 ratings, the app emails their ratings to `ADMIN_EMAIL` (sent once per participant).
+When a participant completes all 250 ratings, the app emails their ratings to `ADMIN_EMAIL` (sent once per participant).
 
 ## Data storage
 
