@@ -17,7 +17,7 @@ export default function Home() {
             <div className="pointer-events-none absolute inset-0 opacity-20 bg-gradient-to-br from-indigo-500 via-fuchsia-500 to-amber-400" />
             <div className="relative">
               <div className="inline-flex items-center gap-2 rounded-full border border-black/10 bg-white/80 px-4 py-2 text-xs font-semibold text-zinc-700 shadow-sm backdrop-blur dark:border-white/10 dark:bg-black/30 dark:text-zinc-200">
-                People Photo Rating • 100 photos • 1–5 stars
+                People Photo Rating • 250 photos • 1–5 stars
               </div>
               <h1 className="mt-4 text-balance text-3xl font-semibold tracking-tight text-zinc-900 dark:text-white sm:text-4xl">
                 People Rating Study

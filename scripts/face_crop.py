@@ -24,17 +24,27 @@ def ensure_dir(p: Path) -> None:
 
 
 def enhance_image(img: Image.Image) -> Image.Image:
-    """Apply basic enhancements: sharpening, contrast, and color."""
-    # Sharpen the image using Unsharp Mask to make soft edges pop
-    img = img.filter(ImageFilter.UnsharpMask(radius=2, percent=150, threshold=3))
+    """Apply advanced enhancements: sharpening, contrast, color, and noise reduction."""
+    # First, apply a slight blur to reduce noise
+    img = img.filter(ImageFilter.GaussianBlur(radius=0.5))
     
-    # Enhance contrast slightly to bring out details
+    # Sharpen the image using Unsharp Mask to make edges pop
+    img = img.filter(ImageFilter.UnsharpMask(radius=1.5, percent=200, threshold=2))
+    
+    # Enhance contrast to bring out details
     enhancer_contrast = ImageEnhance.Contrast(img)
-    img = enhancer_contrast.enhance(1.1)
+    img = enhancer_contrast.enhance(1.2)
+    
+    # Enhance brightness slightly
+    enhancer_brightness = ImageEnhance.Brightness(img)
+    img = enhancer_brightness.enhance(1.05)
     
     # Enhance color (saturation) slightly
     enhancer_color = ImageEnhance.Color(img)
-    img = enhancer_color.enhance(1.05)
+    img = enhancer_color.enhance(1.1)
+    
+    # Apply edge enhancement
+    img = img.filter(ImageFilter.EDGE_ENHANCE_MORE)
     
     return img
 
@@ -173,7 +183,7 @@ def process_image(detector, src_path: Path, dst_path: Path) -> None:
 
     ensure_dir(dst_path.parent)
     # Save as high-quality JPEG with enhancement
-    cropped.save(dst_path, format="JPEG", quality=95, subsampling=0)
+    cropped.save(dst_path, format="JPEG", quality=100, subsampling=0)
     print(f"[OK] Cropped and Enhanced -> {dst_path.relative_to(ROOT)}")
 
 

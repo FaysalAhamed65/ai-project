@@ -10,7 +10,7 @@ export const ImageItemSchema = z.object({
 
 export type ImageItem = z.infer<typeof ImageItemSchema>;
 
-const ImagesSchema = z.array(ImageItemSchema).length(100);
+const ImagesSchema = z.array(ImageItemSchema).min(1);
 
 export function allImages(): ImageItem[] {
   return ImagesSchema.parse(imagesRaw);
@@ -24,7 +24,7 @@ function shuffleInPlace<T>(arr: T[]) {
 }
 
 /**
- * Creates an order of the 100 images with the constraint:
+ * Creates an order of the images with the constraint:
  * - no two consecutive images share the same celebId
  */
 export function generateSmartOrder(images: ImageItem[]): string[] {
@@ -64,7 +64,7 @@ export function generateSmartOrder(images: ImageItem[]): string[] {
     if (order.length === images.length) return order;
   }
 
-  // Fallback: random shuffle without guarantee (should be very rare with 20x5).
+  // Fallback: random shuffle without guarantee (should be very rare).
   const ids = images.map((i) => i.id);
   shuffleInPlace(ids);
   return ids;

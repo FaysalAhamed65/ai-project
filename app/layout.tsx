@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "Photo Rating Study",
-  description: "Rate 100 photos from 1 to 5 stars.",
+  description: "Rate 250 photos from 1 to 5 stars.",
 };
 
 export default function RootLayout({

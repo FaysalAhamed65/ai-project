@@ -13,18 +13,27 @@ function clamp01(n: number) {
   return Math.max(0, Math.min(1, n));
 }
 
+function getColorForAverage(avg: number | null) {
+  if (avg === null) return "bg-gray-400";
+  if (avg < 2) return "bg-gradient-to-r from-red-500 to-rose-500";
+  if (avg < 3) return "bg-gradient-to-r from-orange-500 to-yellow-500";
+  if (avg < 4) return "bg-gradient-to-r from-yellow-500 to-lime-500";
+  return "bg-gradient-to-r from-green-500 to-emerald-500";
+}
+
 function peopleLabelFromCelebId(celebId: string) {
-  const m = /^celeb(\d+)$/.exec(celebId);
-  if (!m) return celebId;
-  return `People ${m[1]}`;
+  const num = celebId.replace("celeb", "");
+  return `People ${num}`;
 }
 
 type PageProps = {
   searchParams?: Record<string, string | string[] | undefined>;
 };
 
-export default async function AdminDashboard({ searchParams }: PageProps) {
+export default async function AdminDashboard(props: PageProps) {
   if (!(await isAdminAuthed())) redirect("/admin/login");
+
+  const searchParams = await props.searchParams;
 
   const stats = await computeAdminStats();
   const celebIds = Array.from(new Set(stats.images.map((i) => i.celebId))).sort();
@@ -32,6 +41,8 @@ export default async function AdminDashboard({ searchParams }: PageProps) {
   const filteredImages =
     selectedCelebId === "all" ? stats.images : stats.images.filter((i) => i.celebId === selectedCelebId);
   const sorted = [...filteredImages].sort((a, b) => a.id.localeCompare(b.id));
+
+  const imageMap = new Map(stats.images.map((img) => [img.id, img]));
 
   const peopleStats = celebIds.map((id) => {
     const imgs = stats.images.filter((i) => i.celebId === id);
@@ -49,15 +60,15 @@ export default async function AdminDashboard({ searchParams }: PageProps) {
   const overallTotal = overallBuckets.reduce((acc, b) => acc + b.count, 0);
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-zinc-50 to-white dark:from-black dark:to-zinc-950">
+    <div className="min-h-screen bg-gradient-to-br from-indigo-100 via-fuchsia-50 to-cyan-100 dark:from-indigo-950 dark:via-fuchsia-950/30 dark:to-cyan-950">
       <div className="mx-auto max-w-6xl px-4 py-10 sm:px-6">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <Link href="/" className="text-sm font-medium text-zinc-700 hover:underline dark:text-zinc-200">
               ← Back to rating page
             </Link>
-            <h1 className="mt-3 text-2xl font-semibold tracking-tight text-zinc-900 dark:text-white">
-              Admin dashboard
+            <h1 className="mt-3 text-3xl font-extrabold tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-violet-600 to-fuchsia-600 dark:from-violet-400 dark:to-fuchsia-400">
+              Admin Dashboard
             </h1>
             <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-300">
               Full visibility: per-image distribution, averages, and unrated images.
@@ -110,7 +121,7 @@ export default async function AdminDashboard({ searchParams }: PageProps) {
           ].map((k) => (
             <div
               key={k.label}
-              className="relative overflow-hidden rounded-2xl border border-black/10 bg-white p-5 shadow-sm dark:border-white/10 dark:bg-zinc-950"
+              className="relative overflow-hidden rounded-2xl border border-violet-200/50 bg-white/60 p-5 shadow-md backdrop-blur-md dark:border-violet-700/30 dark:bg-zinc-950/60"
             >
               <div className={`pointer-events-none absolute inset-0 opacity-10 bg-gradient-to-br ${k.grad}`} />
               <p className="relative text-xs font-semibold text-zinc-600 dark:text-zinc-300">{k.label}</p>
@@ -120,7 +131,7 @@ export default async function AdminDashboard({ searchParams }: PageProps) {
         </div>
 
         <div className="mt-6 grid grid-cols-1 gap-4 lg:grid-cols-3">
-          <div className="overflow-hidden rounded-2xl border border-black/10 bg-white shadow-sm dark:border-white/10 dark:bg-zinc-950 lg:col-span-2">
+          <div className="overflow-hidden rounded-2xl border border-violet-200/50 bg-white/60 shadow-md backdrop-blur-md dark:border-violet-700/30 dark:bg-zinc-950/60 lg:col-span-2">
             <div className="border-b border-black/5 px-5 py-4 dark:border-white/10">
               <p className="text-sm font-semibold text-zinc-900 dark:text-white">Per-people average (chart)</p>
               <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">Bar length is average rating out of 5.</p>
@@ -157,7 +168,7 @@ export default async function AdminDashboard({ searchParams }: PageProps) {
             </div>
           </div>
 
-          <div className="overflow-hidden rounded-2xl border border-black/10 bg-white shadow-sm dark:border-white/10 dark:bg-zinc-950">
+          <div className="overflow-hidden rounded-2xl border border-violet-200/50 bg-white/60 shadow-md backdrop-blur-md dark:border-violet-700/30 dark:bg-zinc-950/60">
             <div className="border-b border-black/5 px-5 py-4 dark:border-white/10">
               <p className="text-sm font-semibold text-zinc-900 dark:text-white">Overall rating distribution</p>
               <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
@@ -198,39 +209,16 @@ export default async function AdminDashboard({ searchParams }: PageProps) {
           </div>
         </div>
 
-        {stats.unrated.length ? (
-          <div className="mt-8 rounded-2xl border border-amber-200 bg-amber-50 p-5 dark:border-amber-900/40 dark:bg-amber-950/30">
-            <p className="text-sm font-semibold text-amber-900 dark:text-amber-100">
-              Images with zero ratings ({stats.unrated.length})
-            </p>
-            <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-6">
-              {stats.unrated.slice(0, 18).map((img) => (
-                <div key={img.id} className="overflow-hidden rounded-xl bg-white/60 dark:bg-black/20">
-                  <div className="relative aspect-[4/5] w-full">
-                    <Image src={img.src} alt={img.label} fill className="object-cover" />
-                  </div>
-                  <div className="p-2">
-                    <p className="truncate text-[11px] font-medium text-zinc-800 dark:text-zinc-200">{img.id}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-            {stats.unrated.length > 18 ? (
-              <p className="mt-3 text-xs text-amber-800 dark:text-amber-200">
-                Showing 18 of {stats.unrated.length}. See the full list in the table below.
-              </p>
-            ) : null}
-          </div>
-        ) : null}
 
-        <div className="mt-10 overflow-hidden rounded-2xl border border-black/10 bg-white shadow-sm dark:border-white/10 dark:bg-zinc-950">
+
+        <div className="mt-10 overflow-hidden rounded-2xl border border-violet-200/50 bg-white/60 shadow-md backdrop-blur-md dark:border-violet-700/30 dark:bg-zinc-950/60">
           <div className="border-b border-black/5 px-5 py-4 dark:border-white/10">
             <p className="text-sm font-semibold text-zinc-900 dark:text-white">Participants</p>
             <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">Saved usernames for people who started rating.</p>
           </div>
           <div className="overflow-x-auto">
             <table className="min-w-full text-left text-sm">
-              <thead className="bg-zinc-50 text-xs font-semibold text-zinc-600 dark:bg-zinc-900/50 dark:text-zinc-300">
+              <thead className="bg-gradient-to-r from-violet-500/10 to-fuchsia-500/10 text-xs font-bold text-violet-900 dark:from-violet-500/20 dark:to-fuchsia-500/20 dark:text-violet-100">
                 <tr>
                   <th className="px-5 py-3">Username</th>
                   <th className="px-5 py-3">Participant ID</th>
@@ -238,7 +226,7 @@ export default async function AdminDashboard({ searchParams }: PageProps) {
                   <th className="px-5 py-3">Last seen</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-black/5 dark:divide-white/10">
+              <tbody className="divide-y divide-violet-500/10 dark:divide-violet-500/20">
                 {stats.participants.slice(0, 50).map((p) => (
                   <tr key={p.id}>
                     <td className="px-5 py-3 font-medium text-zinc-900 dark:text-white">{p.username ?? "—"}</td>
@@ -261,7 +249,7 @@ export default async function AdminDashboard({ searchParams }: PageProps) {
           ) : null}
         </div>
 
-        <div className="mt-10 overflow-hidden rounded-2xl border border-black/10 bg-white shadow-sm dark:border-white/10 dark:bg-zinc-950">
+        <div className="mt-10 overflow-hidden rounded-2xl border border-violet-200/50 bg-white/60 shadow-md backdrop-blur-md dark:border-violet-700/30 dark:bg-zinc-950/60">
           <div className="border-b border-black/5 px-5 py-4 dark:border-white/10">
             <p className="text-sm font-semibold text-zinc-900 dark:text-white">Per-people average</p>
             <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
@@ -270,7 +258,7 @@ export default async function AdminDashboard({ searchParams }: PageProps) {
           </div>
           <div className="overflow-x-auto">
             <table className="min-w-full text-left text-sm">
-              <thead className="bg-zinc-50 text-xs font-semibold text-zinc-600 dark:bg-zinc-900/50 dark:text-zinc-300">
+              <thead className="bg-gradient-to-r from-violet-500/10 to-fuchsia-500/10 text-xs font-bold text-violet-900 dark:from-violet-500/20 dark:to-fuchsia-500/20 dark:text-violet-100">
                 <tr>
                   <th className="px-5 py-3">People</th>
                   <th className="px-5 py-3">Total ratings</th>
@@ -279,7 +267,7 @@ export default async function AdminDashboard({ searchParams }: PageProps) {
                   <th className="px-5 py-3">Unrated photos</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-black/5 dark:divide-white/10">
+              <tbody className="divide-y divide-violet-500/10 dark:divide-violet-500/20">
                 {peopleStats.map((p) => (
                   <tr key={p.celebId} className={p.totalRatings === 0 ? "bg-amber-50/30 dark:bg-amber-950/10" : ""}>
                     <td className="px-5 py-3 font-medium text-zinc-900 dark:text-white">
@@ -303,7 +291,7 @@ export default async function AdminDashboard({ searchParams }: PageProps) {
           </div>
         </div>
 
-        <div className="mt-10 overflow-hidden rounded-2xl border border-black/10 bg-white shadow-sm dark:border-white/10 dark:bg-zinc-950">
+        <div className="mt-10 overflow-hidden rounded-2xl border border-violet-200/50 bg-white/60 shadow-md backdrop-blur-md dark:border-violet-700/30 dark:bg-zinc-950/60">
           <div className="border-b border-black/5 px-5 py-4 dark:border-white/10">
             <p className="text-sm font-semibold text-zinc-900 dark:text-white">
               Per-image stats{" "}
@@ -318,7 +306,7 @@ export default async function AdminDashboard({ searchParams }: PageProps) {
 
           <div className="overflow-x-auto">
             <table className="min-w-full text-left text-sm">
-              <thead className="bg-zinc-50 text-xs font-semibold text-zinc-600 dark:bg-zinc-900/50 dark:text-zinc-300">
+              <thead className="bg-gradient-to-r from-violet-500/10 to-fuchsia-500/10 text-xs font-bold text-violet-900 dark:from-violet-500/20 dark:to-fuchsia-500/20 dark:text-violet-100">
                 <tr>
                   <th className="px-5 py-3">S.No</th>
                   <th className="px-5 py-3">Image</th>
@@ -332,7 +320,7 @@ export default async function AdminDashboard({ searchParams }: PageProps) {
                   <th className="px-5 py-3">5★</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-black/5 dark:divide-white/10">
+              <tbody className="divide-y divide-violet-500/10 dark:divide-violet-500/20">
                 {sorted.map((img, idx) => (
                   <tr key={img.id} className={img.totalRatings === 0 ? "bg-amber-50/30 dark:bg-amber-950/10" : ""}>
                     <td className="px-5 py-3 text-zinc-600 dark:text-zinc-300">{idx + 1}</td>
@@ -368,8 +356,81 @@ export default async function AdminDashboard({ searchParams }: PageProps) {
             </table>
           </div>
         </div>
+
+        <div className="mt-10 overflow-hidden rounded-2xl border border-fuchsia-200/50 bg-gradient-to-br from-indigo-50 via-fuchsia-50 to-rose-50 shadow-md dark:border-fuchsia-800/30 dark:from-indigo-950/40 dark:via-fuchsia-950/20 dark:to-rose-950/40">
+          <div className="border-b border-fuchsia-100/50 bg-white/40 px-5 py-4 backdrop-blur-sm dark:border-fuchsia-900/30 dark:bg-black/20">
+            <p className="text-sm font-bold text-fuchsia-950 dark:text-fuchsia-100">User Rating Details</p>
+            <p className="mt-1 text-xs font-medium text-fuchsia-800/70 dark:text-fuchsia-200/70">
+              Detailed view of every rating given by each user.
+            </p>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="min-w-full text-left text-sm">
+              <thead className="bg-fuchsia-500/5 text-xs font-bold text-fuchsia-900 dark:bg-fuchsia-500/10 dark:text-fuchsia-200">
+                <tr>
+                  <th className="px-5 py-3">S.No</th>
+                  <th className="px-5 py-3">User</th>
+                  <th className="px-5 py-3">Total Ratings</th>
+                  <th className="px-5 py-3">Ratings Breakdown</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-fuchsia-500/10 dark:divide-fuchsia-500/20">
+                {stats.participants.map((p, idx) => (
+                  <tr key={p.id}>
+                    <td className="px-5 py-3 align-top font-medium text-fuchsia-800/60 dark:text-fuchsia-200/60">{idx + 1}</td>
+                    <td className="px-5 py-3 align-top">
+                      <p className="font-bold text-fuchsia-950 dark:text-white">{p.username ?? "Anonymous User"}</p>
+                      <p className="mt-0.5 font-mono text-[11px] text-fuchsia-800/60 dark:text-fuchsia-300/60">{p.id}</p>
+                    </td>
+                    <td className="px-5 py-3 align-top font-medium text-fuchsia-900 dark:text-fuchsia-100">{p.ratings.length}</td>
+                    <td className="px-5 py-3 align-top">
+                      {p.ratings.length > 0 ? (
+                        <div className="grid grid-cols-5 gap-1.5">
+                          {[...p.ratings]
+                            .sort((a, b) => {
+                              const imgA = imageMap.get(a.imageId);
+                              const imgB = imageMap.get(b.imageId);
+                              const cA = imgA?.celebId || "";
+                              const cB = imgB?.celebId || "";
+                              const cmp = cA.localeCompare(cB, undefined, { numeric: true });
+                              if (cmp !== 0) return cmp;
+                              return (imgA?.id || "").localeCompare(imgB?.id || "", undefined, { numeric: true });
+                            })
+                            .map((r) => {
+                              const img = imageMap.get(r.imageId);
+                              if (!img) return null;
+                              const bgClass =
+                                r.rating === 1
+                                  ? "bg-gradient-to-b from-rose-400 to-rose-500 border-b-[3px] border-rose-600 text-white shadow-sm"
+                                  : r.rating === 2
+                                    ? "bg-gradient-to-b from-orange-400 to-orange-500 border-b-[3px] border-orange-600 text-white shadow-sm"
+                                    : r.rating === 3
+                                      ? "bg-gradient-to-b from-yellow-400 to-yellow-500 border-b-[3px] border-yellow-600 text-white shadow-sm"
+                                      : r.rating === 4
+                                        ? "bg-gradient-to-b from-sky-400 to-sky-500 border-b-[3px] border-sky-600 text-white shadow-sm"
+                                        : "bg-gradient-to-b from-fuchsia-400 to-fuchsia-500 border-b-[3px] border-fuchsia-600 text-white shadow-sm";
+                              return (
+                                <span
+                                  key={r.imageId}
+                                  className={`inline-flex items-center justify-center whitespace-nowrap rounded-md px-1.5 py-0.5 text-[10px] font-medium transform transition-transform hover:-translate-y-0.5 ${bgClass}`}
+                                >
+                                  {img.label}: <strong className="ml-1 opacity-100 drop-shadow-sm">{r.rating}★</strong>
+                                </span>
+                              );
+                            })}
+                        </div>
+                      ) : (
+                        <span className="text-xs text-zinc-500 dark:text-zinc-400">No ratings yet</span>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
       </div>
     </div>
   );
 }
-

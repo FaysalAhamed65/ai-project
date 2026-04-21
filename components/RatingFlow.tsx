@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, useRef } from "react";
 import { Stars } from "@/components/Stars";
 import { cn } from "@/lib/ui";
 
@@ -23,28 +23,6 @@ type SessionPayload = {
   images: SessionImage[];
   isFinished: boolean;
 };
-
-type AspectPreset = "3 / 5" | "1 / 1" | "100 / 167";
-
-function pickAspectPreset(width: number, height: number): AspectPreset {
-  const ratio = width / height;
-  const presets: Array<{ key: AspectPreset; value: number }> = [
-    { key: "3 / 5", value: 3 / 5 },
-    { key: "1 / 1", value: 1 / 1 },
-    { key: "100 / 167", value: 100 / 167 },
-  ];
-
-  let best = presets[0]!;
-  let bestDiff = Math.abs(ratio - best.value);
-  for (const p of presets) {
-    const diff = Math.abs(ratio - p.value);
-    if (diff < bestDiff) {
-      best = p;
-      bestDiff = diff;
-    }
-  }
-  return best.key;
-}
 
 async function getSession(cursor: number | null): Promise<SessionPayload> {
   const qs = cursor === null ? "" : `?cursor=${cursor}`;
@@ -83,20 +61,30 @@ export function RatingFlow() {
   const [savingId, setSavingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [cursor, setCursor] = useState<number | null>(null);
-  const [imageAspectById, setImageAspectById] = useState<Record<string, AspectPreset>>({});
+  const [imageAspectById, setImageAspectById] = useState<Record<string, string>>({});
+  const requestCounter = useRef<number>(0);
+  const optimisticallyRated = useRef<Set<string>>(new Set());
 
   const refresh = useCallback(async () => {
+    optimisticallyRated.current.clear();
+    const reqId = ++requestCounter.current;
     setLoading(true);
     setError(null);
     try {
       const s = await getSession(cursor);
-      setSession(s);
-      // Sync cursor with server-selected index on first load.
-      if (cursor === null) setCursor(s.pageStart);
+      if (requestCounter.current === reqId) {
+        setSession(s);
+        // Sync cursor with server-selected index on first load.
+        if (cursor === null) setCursor(s.pageStart);
+      }
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Something went wrong");
+      if (requestCounter.current === reqId) {
+        setError(e instanceof Error ? e.message : "Something went wrong");
+      }
     } finally {
-      setLoading(false);
+      if (requestCounter.current === reqId) {
+        setLoading(false);
+      }
     }
   }, [cursor]);
 
@@ -106,21 +94,35 @@ export function RatingFlow() {
 
   async function onRate(imageId: string, rating: number) {
     if (!session) return;
+    if (optimisticallyRated.current.has(imageId)) return;
+    optimisticallyRated.current.add(imageId);
+
     setSavingId(imageId);
     setError(null);
+    const reqId = ++requestCounter.current;
     try {
       await submitRating(imageId, rating);
-      // Move to next index, but allow going back with Previous.
-      const next = Math.min((cursor ?? session.pageStart) + 1, Math.max(0, session.total));
-      setCursor(next);
-      const s = await getSession(next);
-      setSession(s);
-      setCursor(s.pageStart);
-      window.scrollTo({ top: 0, behavior: "smooth" });
+
+      // After successful rating, advance to next
+      const nextIndex = Math.min((cursor ?? session.pageStart) + 1, Math.max(0, session.total));
+
+      setCursor(nextIndex);
+      setLoading(true);
+      const s = await getSession(nextIndex);
+      if (requestCounter.current === reqId) {
+        setSession(s);
+        setCursor(s.pageStart);
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      }
     } catch (e) {
+      optimisticallyRated.current.delete(imageId);
       setError(e instanceof Error ? e.message : "Failed to save rating");
+      // Do not refresh, just show error
     } finally {
-      setSavingId(null);
+      setSavingId((prev) => (prev === imageId ? null : prev));
+      if (requestCounter.current === reqId) {
+        setLoading(false);
+      }
     }
   }
 
@@ -143,7 +145,8 @@ export function RatingFlow() {
   const percent = Math.round((session.completed / Math.max(1, session.total)) * 100);
   const currentIndex = cursor ?? session.pageStart;
   const currentImage = session.images[0] ?? null;
-  const canPrev = currentIndex > 0;
+  const limitPrev = Math.max(0, session.completed - 3);
+  const canPrev = currentIndex > limitPrev;
   const canNext = currentIndex + 1 < session.total && (currentImage?.rating ?? null) !== null;
 
   return (
@@ -172,19 +175,27 @@ export function RatingFlow() {
             type="button"
             disabled={!canPrev || savingId !== null}
             onClick={async () => {
-              const prev = Math.max(0, currentIndex - 1);
+              const prev = Math.max(limitPrev, currentIndex - 1);
+              const reqId = ++requestCounter.current;
+              optimisticallyRated.current.clear();
               setCursor(prev);
               setLoading(true);
               setError(null);
               try {
                 const s = await getSession(prev);
-                setSession(s);
-                setCursor(s.pageStart);
-                window.scrollTo({ top: 0, behavior: "smooth" });
+                if (requestCounter.current === reqId) {
+                  setSession(s);
+                  setCursor(s.pageStart);
+                  window.scrollTo({ top: 0, behavior: "smooth" });
+                }
               } catch (e) {
-                setError(e instanceof Error ? e.message : "Failed to load");
+                if (requestCounter.current === reqId) {
+                  setError(e instanceof Error ? e.message : "Failed to load");
+                }
               } finally {
-                setLoading(false);
+                if (requestCounter.current === reqId) {
+                  setLoading(false);
+                }
               }
             }}
             className={cn(
@@ -202,18 +213,26 @@ export function RatingFlow() {
             onClick={async () => {
               if (!canNext) return;
               const next = Math.min(currentIndex + 1, Math.max(0, session.total));
+              const reqId = ++requestCounter.current;
+              optimisticallyRated.current.clear();
               setCursor(next);
               setLoading(true);
               setError(null);
               try {
                 const s = await getSession(next);
-                setSession(s);
-                setCursor(s.pageStart);
-                window.scrollTo({ top: 0, behavior: "smooth" });
+                if (requestCounter.current === reqId) {
+                  setSession(s);
+                  setCursor(s.pageStart);
+                  window.scrollTo({ top: 0, behavior: "smooth" });
+                }
               } catch (e) {
-                setError(e instanceof Error ? e.message : "Failed to load");
+                if (requestCounter.current === reqId) {
+                  setError(e instanceof Error ? e.message : "Failed to load");
+                }
               } finally {
-                setLoading(false);
+                if (requestCounter.current === reqId) {
+                  setLoading(false);
+                }
               }
             }}
             className={cn(
@@ -280,7 +299,6 @@ export function RatingFlow() {
 
           {session.images[0] ? (
             <div
-              key={session.images[0].id}
               className={cn(
                 "mx-auto w-fit max-w-full overflow-hidden rounded-2xl border border-black/10 bg-white shadow-sm dark:border-white/10 dark:bg-zinc-950",
                 savingId === session.images[0].id ? "opacity-75" : "opacity-100"
@@ -299,15 +317,15 @@ export function RatingFlow() {
                   fill
                   sizes="(max-width: 1024px) 100vw, 640px"
                   className="object-contain"
-                  priority={false}
+                  priority={true}
                   onLoad={(e) => {
                     const img = e.currentTarget as HTMLImageElement;
                     const { naturalWidth, naturalHeight } = img;
                     if (!naturalWidth || !naturalHeight) return;
-                    const aspectPreset = pickAspectPreset(naturalWidth, naturalHeight);
+                    const actualAspect = `${naturalWidth} / ${naturalHeight}`;
                     setImageAspectById((prev) => {
-                      if (prev[session.images[0]!.id] === aspectPreset) return prev;
-                      return { ...prev, [session.images[0]!.id]: aspectPreset };
+                      if (prev[session.images[0]!.id] === actualAspect) return prev;
+                      return { ...prev, [session.images[0]!.id]: actualAspect };
                     });
                   }}
                 />
@@ -334,6 +352,11 @@ export function RatingFlow() {
                   </span>
                 </div>
               </div>
+              {session.images.slice(1, 4).map((img) => (
+                <div key={img.id} className="hidden">
+                  <Image src={img.src} alt="preload" width={10} height={10} priority={true} />
+                </div>
+              ))}
             </div>
           ) : (
             <div className="py-10 text-center text-sm text-zinc-600 dark:text-zinc-300">No image found.</div>

@@ -61,7 +61,7 @@ export async function POST(req: Request) {
         const revoteCount = Number(countRow?.cnt ?? 0);
         if (revoteCount >= 3) {
           return NextResponse.json(
-            { error: "You can re-vote at most 3 distinct photos in this 100-photo run." },
+            { error: "You can re-vote at most 3 distinct photos in this 250-photo run." },
             { status: 403 }
           );
         }

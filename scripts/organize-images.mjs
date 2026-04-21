@@ -46,19 +46,21 @@ function main() {
     process.exit(0);
   }
 
-  if (topLevelImages.length !== 100) {
+  if (topLevelImages.length % 5 !== 0) {
     console.log(`Found ${topLevelImages.length} top-level images in public/images/.`);
-    console.log("This script expects exactly 100 images (photos 1–100).");
+    console.log("This script expects a multiple of 5 images (5 photos per celeb).");
     process.exit(1);
   }
+
+  const totalImages = topLevelImages.length;
 
   /** @type {{from:string,to:string}[]} */
   const moves = [];
 
-  for (let idx = 0; idx < 100; idx++) {
+  for (let idx = 0; idx < totalImages; idx++) {
     const file = topLevelImages[idx];
     const ext = path.extname(file).toLowerCase();
-    const personIndex = Math.floor(idx / 5) + 1; // 1..20
+    const personIndex = Math.floor(idx / 5) + 1; 
     const photoIndex = (idx % 5) + 1; // 1..5
 
     const celebId = `celeb${pad2(personIndex)}`;
@@ -97,7 +99,7 @@ function main() {
     fs.renameSync(from, to);
   }
 
-  console.log("Done. Images are now under public/images/celeb01..celeb20/01.jpg..05.jpg");
+  console.log(`Done. Images are now under public/images/celeb01..celeb${pad2(totalImages/5)}/01.jpg..05.jpg`);
 }
 
 main();

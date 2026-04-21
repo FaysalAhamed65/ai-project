@@ -32,12 +32,37 @@ export async function computeAdminStats() {
   const participantsRes = await d.execute(
     "SELECT id, username, created_at, last_seen_at FROM participants ORDER BY created_at DESC"
   );
-  const participants = participantsRes.rows as unknown as {
+  const participantsList = participantsRes.rows as unknown as {
     id: string;
     username: string | null;
     created_at: number;
     last_seen_at: number;
   }[];
+
+  const allRatingsRes = await d.execute(
+    "SELECT participant_id, image_id, rating, updated_at FROM ratings ORDER BY updated_at ASC"
+  );
+  const allRatings = allRatingsRes.rows as unknown as {
+    participant_id: string;
+    image_id: string;
+    rating: number;
+    updated_at: number;
+  }[];
+
+  const ratingsByParticipant = new Map<string, { imageId: string; rating: number; updatedAt: number }[]>();
+  for (const r of allRatings) {
+    const list = ratingsByParticipant.get(r.participant_id) || [];
+    list.push({ imageId: r.image_id, rating: Number(r.rating), updatedAt: Number(r.updated_at) });
+    ratingsByParticipant.set(r.participant_id, list);
+  }
+
+  const participants = participantsList.map((p) => ({
+    id: p.id,
+    username: p.username,
+    created_at: p.created_at,
+    last_seen_at: p.last_seen_at,
+    ratings: ratingsByParticipant.get(p.id) || [],
+  }));
 
   const rowsRes = await d.execute(`
     SELECT image_id, rating, COUNT(*) as c

@@ -60,7 +60,7 @@ export async function GET(req: Request) {
   }
 
   const pageStart = Math.min(startIndex, order.length);
-  const pageSize = 1;
+  const pageSize = 10;
   const pageEnd = Math.min(pageStart + pageSize, order.length);
   const pageIds = order.slice(pageStart, pageEnd);
 
